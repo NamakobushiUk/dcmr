@@ -1,97 +1,111 @@
 <!DOCTYPE html>
- <html lang="ja">
- <head>
-   <meta charset="UTF-8">
-   <title>2人用P2P通信デモ</title>
- </head>
- <body>
-   <h1>WebRTC 2人用シンプルデモ</h1>
- 
-   <button id="create-offer">オファー作成</button><br>
-   <textarea id="offer" cols="80" rows="8" placeholder="ここにオファーが出ます"></textarea><br>
- 
-   <button id="set-offer">オファーセット</button><br>
-   <textarea id="remote-offer" cols="80" rows="8" placeholder="相手からもらったオファーをここに"></textarea><br>
- 
-   <button id="create-answer">アンサー作成</button><br>
-   <textarea id="answer" cols="80" rows="8" placeholder="ここにアンサーが出ます"></textarea><br>
- 
-   <button id="set-answer">アンサーセット</button><br>
-   <textarea id="remote-answer" cols="80" rows="8" placeholder="相手からもらったアンサーをここに"></textarea><br>
- 
-   <input id="message" type="text" placeholder="送りたいメッセージ">
-   <button id="send">送信</button><br>
- 
-   <div id="chat"></div>
- <script>
-   fetch('https://api.ipify.org?format=json')
-     .then(response => response.json())
-     .then(data => {
-       console.log('自分の外部IPアドレス:', data.ip);
-     });
- </script>
- 
-   <script>
-    let pc = new RTCPeerConnection({
-   iceServers: [
-     { urls: "stun:stun.l.google.com:19302" },
-     { urls: "stun:stun1.l.google.com:19302" },
-     { urls: "stun:stun2.l.google.com:19302" },
-   ]
- });
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>2人用P2P通信デモ</title>
+</head>
+<body>
+  <h1>WebRTC 2人用シンプルデモ</h1>
 
- 
-     let dataChannel;
- 
-     // データチャンネルを受信したとき
-     pc.ondatachannel = (event) => {
-       dataChannel = event.channel;
-       setupDataChannel();
-     };
- 
-     function setupDataChannel() {
-       dataChannel.onopen = () => {
-         console.log("データチャネル接続成功！");
-       };
-       dataChannel.onmessage = (event) => {
-         const chat = document.getElementById("chat");
-         chat.innerHTML += "<div>相手: " + event.data + "</div>";
-       };
-     }
- 
-     document.getElementById("create-offer").onclick = async () => {
-       dataChannel = pc.createDataChannel("chat");
-       setupDataChannel();
- 
-       const offer = await pc.createOffer();
-       await pc.setLocalDescription(offer);
-       document.getElementById("offer").value = JSON.stringify(pc.localDescription);
-     };
- 
-     document.getElementById("set-offer").onclick = async () => {
-       const offer = JSON.parse(document.getElementById("remote-offer").value);
-       await pc.setRemoteDescription(offer);
- 
-       const answer = await pc.createAnswer();
-       await pc.setLocalDescription(answer);
-       document.getElementById("answer").value = JSON.stringify(pc.localDescription);
-     };
- 
-     document.getElementById("set-answer").onclick = async () => {
-       const answer = JSON.parse(document.getElementById("remote-answer").value);
-       await pc.setRemoteDescription(answer);
-     };
- 
-     document.getElementById("send").onclick = () => {
-       const msg = document.getElementById("message").value;
-       if (dataChannel && dataChannel.readyState === "open") {
-         dataChannel.send(msg);
-         const chat = document.getElementById("chat");
-         chat.innerHTML += "<div>自分: " + msg + "</div>";
-       } else {
-         console.log("データチャネルがまだオープンしていません");
-       }
-     };
-   </script>
- </body>
- </html>
+  <button id="create-offer">オファー作成</button><br>
+  <textarea id="offer" cols="80" rows="8" placeholder="ここにオファーが出ます"></textarea><br>
+
+  <button id="set-offer">オファーセット</button><br>
+  <textarea id="remote-offer" cols="80" rows="8" placeholder="相手からもらったオファーをここに"></textarea><br>
+
+  <button id="create-answer">アンサー作成</button><br>
+  <textarea id="answer" cols="80" rows="8" placeholder="ここにアンサーが出ます"></textarea><br>
+
+  <button id="set-answer">アンサーセット</button><br>
+  <textarea id="remote-answer" cols="80" rows="8" placeholder="相手からもらったアンサーをここに"></textarea><br>
+
+  <input id="message" type="text" placeholder="送りたいメッセージ">
+  <button id="send">送信</button><br>
+
+  <div id="chat"></div>
+
+  <script>
+    // 外部IP確認用（おまけ）
+    fetch('https://api.ipify.org?format=json')
+      .then(response => response.json())
+      .then(data => {
+        console.log('自分の外部IPアドレス:', data.ip);
+      });
+
+    let pc = new RTCPeerConnection({
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+      ]
+    });
+
+    let dataChannel;
+    let isOfferer = false;
+
+    // データチャンネル受信
+    pc.ondatachannel = (event) => {
+      dataChannel = event.channel;
+      setupDataChannel();
+    };
+
+    function setupDataChannel() {
+      dataChannel.onopen = () => {
+        console.log("データチャネル接続成功！");
+      };
+      dataChannel.onmessage = (event) => {
+        const chat = document.getElementById("chat");
+        chat.innerHTML += "<div>相手: " + event.data + "</div>";
+      };
+    }
+
+    // ICE gatheringが終わったらオファー/アンサーを表示する！
+    pc.onicecandidate = (event) => {
+      if (!event.candidate) { // candidateがnullになった＝gathering完了
+        console.log("ICE gathering 完了");
+
+        if (isOfferer) {
+          document.getElementById("offer").value = JSON.stringify(pc.localDescription);
+        } else {
+          document.getElementById("answer").value = JSON.stringify(pc.localDescription);
+        }
+      }
+    };
+
+    document.getElementById("create-offer").onclick = async () => {
+      dataChannel = pc.createDataChannel("chat");
+      setupDataChannel();
+
+      isOfferer = true;
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      // localDescriptionの中身を直接出さず、onicecandidateで完了待ち
+    };
+
+    document.getElementById("set-offer").onclick = async () => {
+      const offer = JSON.parse(document.getElementById("remote-offer").value);
+      await pc.setRemoteDescription(offer);
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      isOfferer = false;
+    };
+
+    document.getElementById("set-answer").onclick = async () => {
+      const answer = JSON.parse(document.getElementById("remote-answer").value);
+      await pc.setRemoteDescription(answer);
+    };
+
+    document.getElementById("send").onclick = () => {
+      const msg = document.getElementById("message").value;
+      if (dataChannel && dataChannel.readyState === "open") {
+        dataChannel.send(msg);
+        const chat = document.getElementById("chat");
+        chat.innerHTML += "<div>自分: " + msg + "</div>";
+      } else {
+        console.log("データチャネルがまだオープンしていません");
+      }
+    };
+  </script>
+</body>
+</html>
