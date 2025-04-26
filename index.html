@@ -2,80 +2,75 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>2人用P2P通信デモ</title>
+  <title>超シンプルP2P通信デモ</title>
 </head>
 <body>
-  <h1>WebRTC 2人用シンプルデモ</h1>
+  <h1>2人用P2P通信デモ（WebRTC）</h1>
 
-  <button id="create-offer">オファー作成</button><br>
-  <textarea id="offer" cols="80" rows="8" placeholder="ここにオファーが出ます"></textarea><br>
+  <button id="create-offer">オファー作成</button>
+  <textarea id="offer" placeholder="オファー表示欄" rows="5" cols="60"></textarea>
 
-  <button id="set-offer">オファーセット</button><br>
-  <textarea id="remote-offer" cols="80" rows="8" placeholder="相手からもらったオファーをここに"></textarea><br>
+  <button id="create-answer">アンサー作成</button>
+  <textarea id="answer" placeholder="アンサー表示欄" rows="5" cols="60"></textarea>
 
-  <button id="create-answer">アンサー作成</button><br>
-  <textarea id="answer" cols="80" rows="8" placeholder="ここにアンサーが出ます"></textarea><br>
+  <button id="set-answer">アンサーセット</button>
 
-  <button id="set-answer">アンサーセット</button><br>
-  <textarea id="remote-answer" cols="80" rows="8" placeholder="相手からもらったアンサーをここに"></textarea><br>
+  <h2>メッセージ送信</h2>
+  <input type="text" id="message" placeholder="メッセージ入力">
+  <button id="send">送信</button>
 
-  <input id="message" type="text" placeholder="送りたいメッセージ">
-  <button id="send">送信</button><br>
-
+  <h2>受信メッセージ</h2>
   <div id="chat"></div>
 
   <script>
-    let pc = new RTCPeerConnection();
+    const peerConnection = new RTCPeerConnection();
+
     let dataChannel;
 
-    // データチャンネルを受信したとき
-    pc.ondatachannel = (event) => {
+    document.getElementById('create-offer').onclick = async () => {
+      dataChannel = peerConnection.createDataChannel("chat");
+      setupDataChannel();
+
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      document.getElementById('offer').value = JSON.stringify(peerConnection.localDescription);
+    };
+
+    document.getElementById('create-answer').onclick = async () => {
+      const offer = JSON.parse(document.getElementById('offer').value);
+      await peerConnection.setRemoteDescription(offer);
+
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      document.getElementById('answer').value = JSON.stringify(peerConnection.localDescription);
+    };
+
+    document.getElementById('set-answer').onclick = async () => {
+      const answer = JSON.parse(document.getElementById('answer').value);
+      await peerConnection.setRemoteDescription(answer);
+    };
+
+    peerConnection.ondatachannel = (event) => {
       dataChannel = event.channel;
       setupDataChannel();
     };
 
     function setupDataChannel() {
-      dataChannel.onopen = () => {
-        console.log("データチャネル接続成功！");
-      };
       dataChannel.onmessage = (event) => {
-        const chat = document.getElementById("chat");
-        chat.innerHTML += "<div>相手: " + event.data + "</div>";
+        const chat = document.getElementById('chat');
+        chat.innerHTML += `<div>相手: ${event.data}</div>`;
       };
     }
 
-    document.getElementById("create-offer").onclick = async () => {
-      dataChannel = pc.createDataChannel("chat");
-      setupDataChannel();
+    document.getElementById('send').onclick = () => {
+      const message = document.getElementById('message').value;
+      dataChannel.send(message);
 
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      document.getElementById("offer").value = JSON.stringify(pc.localDescription);
-    };
-
-    document.getElementById("set-offer").onclick = async () => {
-      const offer = JSON.parse(document.getElementById("remote-offer").value);
-      await pc.setRemoteDescription(offer);
-
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      document.getElementById("answer").value = JSON.stringify(pc.localDescription);
-    };
-
-    document.getElementById("set-answer").onclick = async () => {
-      const answer = JSON.parse(document.getElementById("remote-answer").value);
-      await pc.setRemoteDescription(answer);
-    };
-
-    document.getElementById("send").onclick = () => {
-      const msg = document.getElementById("message").value;
-      if (dataChannel && dataChannel.readyState === "open") {
-        dataChannel.send(msg);
-        const chat = document.getElementById("chat");
-        chat.innerHTML += "<div>自分: " + msg + "</div>";
-      } else {
-        console.log("データチャネルがまだオープンしていません");
-      }
+      const chat = document.getElementById('chat');
+      chat.innerHTML += `<div>自分: ${message}</div>`;
+      document.getElementById('message').value = '';
     };
   </script>
 </body>
