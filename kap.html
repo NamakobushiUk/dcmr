@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>超シンプルP2P通信デモ</title>
+</head>
+<body>
+  <h1>2人用P2P通信デモ（WebRTC）</h1>
+
+  <button id="create-offer">オファー作成</button>
+  <textarea id="offer" placeholder="オファー表示欄" rows="5" cols="60"></textarea>
+
+  <button id="create-answer">アンサー作成</button>
+  <textarea id="answer" placeholder="アンサー表示欄" rows="5" cols="60"></textarea>
+
+  <button id="set-answer">アンサーセット</button>
+
+  <h2>メッセージ送信</h2>
+  <input type="text" id="message" placeholder="メッセージ入力">
+  <button id="send">送信</button>
+
+  <h2>受信メッセージ</h2>
+  <div id="chat"></div>
+
+  <script>
+    const peerConnection = new RTCPeerConnection();
+
+    let dataChannel;
+
+    document.getElementById('create-offer').onclick = async () => {
+      dataChannel = peerConnection.createDataChannel("chat");
+      setupDataChannel();
+
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+
+      document.getElementById('offer').value = JSON.stringify(peerConnection.localDescription);
+    };
+
+    document.getElementById('create-answer').onclick = async () => {
+      const offer = JSON.parse(document.getElementById('offer').value);
+      await peerConnection.setRemoteDescription(offer);
+
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+
+      document.getElementById('answer').value = JSON.stringify(peerConnection.localDescription);
+    };
+
+    document.getElementById('set-answer').onclick = async () => {
+      const answer = JSON.parse(document.getElementById('answer').value);
+      await peerConnection.setRemoteDescription(answer);
+    };
+
+    peerConnection.ondatachannel = (event) => {
+      dataChannel = event.channel;
+      setupDataChannel();
+    };
+
+    function setupDataChannel() {
+      dataChannel.onmessage = (event) => {
+        const chat = document.getElementById('chat');
+        chat.innerHTML += `<div>相手: ${event.data}</div>`;
+      };
+    }
+
+    document.getElementById('send').onclick = () => {
+      const message = document.getElementById('message').value;
+      dataChannel.send(message);
+
+      const chat = document.getElementById('chat');
+      chat.innerHTML += `<div>自分: ${message}</div>`;
+      document.getElementById('message').value = '';
+    };
+  </script>
+</body>
+</html>
