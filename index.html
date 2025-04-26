@@ -23,7 +23,14 @@
   <button id="send">送信</button><br>
 
   <div id="chat"></div>
-
+<script>
+  fetch('https://api.ipify.org?format=json')
+    .then(response => response.json())
+    .then(data => {
+      console.log('自分の外部IPアドレス:', data.ip);
+    });
+</script>
+  
   <script>
    let pc = new RTCPeerConnection({
   iceServers: [
