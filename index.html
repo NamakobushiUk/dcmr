@@ -24,14 +24,25 @@
 
   <div id="chat"></div>
 <script>
-  fetch('https://api.ipify.org?format=json')
-    .then(response => response.json())
-    .then(data => {
-      console.log('自分の外部IPアドレス:', data.ip);
-    });
-  
-   let pc = data.ip
-  console.log('自分の外部IPアドレス:', pc);
+// 外部IPアドレスを取得する非同期関数
+async function getExternalIP() {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    
+    const pc = data.ip;  // 取得した外部IPを pc に格納
+    console.log('自分の外部IPアドレス:', pc);
+    
+    // ここで pc を使って、WebRTCや他の処理を行う
+  } catch (error) {
+    console.error('IP取得エラー:', error);
+  }
+}
+
+// 関数を実行
+getExternalIP();
+  console.log('自分の外部IPアドレスは:', pc);
+
 
     let dataChannel;
 
