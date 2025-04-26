@@ -56,17 +56,17 @@
         dataChannel = event.channel;
         setupDataChannel();
       };
+    }
 
-      // データチャネルの設定
-      function setupDataChannel() {
-        dataChannel.onopen = () => {
-          console.log("データチャネル接続成功！");
-        };
-        dataChannel.onmessage = (event) => {
-          const chat = document.getElementById("chat");
-          chat.innerHTML += "<div>相手: " + event.data + "</div>";
-        };
-      }
+    // データチャネルの設定
+    function setupDataChannel() {
+      dataChannel.onopen = () => {
+        console.log("データチャネル接続成功！");
+      };
+      dataChannel.onmessage = (event) => {
+        const chat = document.getElementById("chat");
+        chat.innerHTML += "<div>相手: " + event.data + "</div>";
+      };
     }
 
     document.getElementById("create-offer").onclick = async () => {
